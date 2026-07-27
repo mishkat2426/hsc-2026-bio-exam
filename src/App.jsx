@@ -53,6 +53,14 @@ export default function App() {
     return localStorage.getItem('hsc_bio_studentName') || '';
   });
   const [activeLandingTab, setActiveLandingTab] = useState('start'); // 'start' | 'leaderboard'
+  const [subTab, setSubTab] = useState('leaderboard'); // 'leaderboard' | 'personal'
+  const [searchProgressName, setSearchProgressName] = useState('');
+
+  useEffect(() => {
+    if (studentName && !searchProgressName) {
+      setSearchProgressName(studentName);
+    }
+  }, [studentName]);
 
   useEffect(() => {
     localStorage.setItem('hsc_bio_leaderboard', JSON.stringify(leaderboard));
@@ -283,6 +291,7 @@ export default function App() {
       percentage: finalPercent,
       timeTaken: finalTimeTaken,
       mode: config.mode,
+      chapters: config.selectedChapters.length > 0 ? config.selectedChapters : allChapters,
       date: new Date().toLocaleDateString('bn-BD') + ' ' + new Date().toLocaleTimeString('bn-BD', { hour: '2-digit', minute: '2-digit', hour12: true })
     };
 
@@ -742,10 +751,10 @@ export default function App() {
               </button>
             </div>
             )}
-
-            {/* Leaderboard & History view */}
             {activeLandingTab === 'leaderboard' && (
               <div className="glass-panel-heavy p-6 sm:p-8 rounded-3xl shadow-sakura space-y-6 animate-scale-in">
+                
+                {/* Header Title */}
                 <div className="text-center space-y-2">
                   <span className="text-4xl animate-bounce">🏆</span>
                   <h3 className="font-display text-xl font-black text-slate-800">
@@ -756,96 +765,323 @@ export default function App() {
                   </p>
                 </div>
 
-                {/* Leaderboard Table (Top 10 sorted by percentage desc, then timeTaken asc) */}
-                <div className="space-y-3">
-                  <h4 className="text-sm font-bold text-slate-700 flex items-center gap-1.5 border-b border-slate-100 pb-2">
-                    👑 টপ ১০ লিডারবোর্ড (Top 10 Leaderboard)
-                  </h4>
-                  {leaderboard.length === 0 ? (
-                    <p className="text-xs text-slate-400 text-center py-4">এখনো কোনো পরীক্ষার রেকর্ড নেই। পরীক্ষা দিয়ে প্রথম স্থান অর্জন করো! 🌸</p>
-                  ) : (
-                    <div className="overflow-x-auto rounded-2xl border border-sakura-100 bg-white/40">
-                      <table className="w-full text-left text-xs border-collapse">
-                        <thead>
-                          <tr className="bg-sakura-50 border-b border-sakura-100 font-extrabold text-slate-700">
-                            <th className="p-3 text-center">স্থান (Rank)</th>
-                            <th className="p-3">শিক্ষার্থী (Name)</th>
-                            <th className="p-3 text-center">স্কোর (Score)</th>
-                            <th className="p-3 text-center">শতকরা (Percentage)</th>
-                            <th className="p-3 text-center">সময় (Time)</th>
-                            <th className="p-3 text-center">মোড (Mode)</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-sakura-50">
-                          {[...leaderboard]
-                            .sort((a, b) => {
-                              if (b.percentage !== a.percentage) {
-                                return b.percentage - a.percentage;
-                              }
-                              return a.timeTaken - b.timeTaken;
-                            })
-                            .slice(0, 10)
-                            .map((record, index) => {
-                              let medal = (index + 1).toString();
-                              if (index === 0) medal = '🥇';
-                              if (index === 1) medal = '🥈';
-                              if (index === 2) medal = '🥉';
-                              return (
-                                <tr key={record.id} className="hover:bg-sakura-50/20 font-medium text-slate-600 transition-colors">
-                                  <td className="p-3 text-center font-bold text-base">{medal}</td>
-                                  <td className="p-3 font-semibold text-slate-800 flex items-center gap-1.5">
-                                    <span>🐱</span>
-                                    <span>{record.name}</span>
-                                  </td>
-                                  <td className="p-3 text-center font-bold">{record.score} / {record.total}</td>
-                                  <td className="p-3 text-center text-sakura-600 font-extrabold">{record.percentage}%</td>
-                                  <td className="p-3 text-center font-mono">{formatTime(record.timeTaken)}</td>
-                                  <td className="p-3 text-center uppercase text-[10px] font-bold text-slate-400">{record.mode}</td>
-                                </tr>
-                              );
-                            })}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
+                {/* Sub-tabs selector */}
+                <div className="flex border-b border-sakura-100 pb-1 gap-4 text-xs font-bold justify-center">
+                  <button
+                    onClick={() => setSubTab('leaderboard')}
+                    className={`pb-2 px-2 transition-all ${
+                      subTab === 'leaderboard'
+                        ? 'border-b-2 border-sakura-500 text-sakura-600'
+                        : 'text-slate-400 hover:text-slate-650'
+                    }`}
+                  >
+                    👑 টপ ১০ র‍্যাঙ্কিং (Top Rankings)
+                  </button>
+                  <button
+                    onClick={() => setSubTab('personal')}
+                    className={`pb-2 px-2 transition-all ${
+                      subTab === 'personal'
+                        ? 'border-b-2 border-sakura-500 text-sakura-600'
+                        : 'text-slate-400 hover:text-slate-650'
+                    }`}
+                  >
+                    📊 ব্যক্তিগত অগ্রগতি (My Progress Dashboard)
+                  </button>
                 </div>
 
-                {/* History Table (Recent attempts in chronological order) */}
-                {leaderboard.length > 0 && (
-                  <div className="space-y-3 pt-4">
-                    <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-                      <h4 className="text-sm font-bold text-slate-700 flex items-center gap-1.5">
-                        📜 সাম্প্রতিক প্রচেষ্টাসমূহ (Recent Attempts)
+                {/* VIEW A: Rankings Table */}
+                {subTab === 'leaderboard' && (
+                  <div className="space-y-6">
+                    <div className="space-y-3">
+                      <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                        🌟 গ্লোবাল লিডারবোর্ড
                       </h4>
-                      <button
-                        onClick={() => {
-                          if (window.confirm("তুমি কি সব ইতিহাস ও লিডারবোর্ড তথ্য মুছে ফেলতে চাও?")) {
-                            setLeaderboard([]);
-                          }
-                        }}
-                        className="text-[10px] font-bold text-rose-500 hover:text-rose-600 hover:underline"
-                      >
-                        ইতিহাস মুছুন (Clear All)
-                      </button>
+                      {leaderboard.length === 0 ? (
+                        <p className="text-xs text-slate-400 text-center py-6 bg-white/40 border border-sakura-100 rounded-2xl">
+                          এখনো কোনো রেকর্ড নেই। পরীক্ষা দিয়ে প্রথম স্থান অর্জন করো! 🌸
+                        </p>
+                      ) : (
+                        <div className="overflow-x-auto rounded-2xl border border-sakura-100 bg-white/40 shadow-sm">
+                          <table className="w-full text-left text-xs border-collapse">
+                            <thead>
+                              <tr className="bg-sakura-50 border-b border-sakura-100 font-extrabold text-slate-700">
+                                <th className="p-3 text-center">স্থান (Rank)</th>
+                                <th className="p-3">শিক্ষার্থী (Name)</th>
+                                <th className="p-3 text-center">স্কোর (Score)</th>
+                                <th className="p-3 text-center">শতকরা (Percentage)</th>
+                                <th className="p-3 text-center">সময় (Time)</th>
+                                <th className="p-3 text-center">মোড (Mode)</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-sakura-50">
+                              {[...leaderboard]
+                                .sort((a, b) => {
+                                  if (b.percentage !== a.percentage) {
+                                    return b.percentage - a.percentage;
+                                  }
+                                  return a.timeTaken - b.timeTaken;
+                                })
+                                .slice(0, 10)
+                                .map((record, index) => {
+                                  let medal = (index + 1).toString();
+                                  if (index === 0) medal = '🥇';
+                                  if (index === 1) medal = '🥈';
+                                  if (index === 2) medal = '🥉';
+                                  return (
+                                    <tr key={record.id} className="hover:bg-sakura-50/20 font-medium text-slate-650 transition-colors">
+                                      <td className="p-3 text-center font-bold text-base">{medal}</td>
+                                      <td className="p-3 font-semibold text-slate-800 flex items-center gap-1.5">
+                                        <span>🐱</span>
+                                        <span>{record.name}</span>
+                                      </td>
+                                      <td className="p-3 text-center font-bold">{record.score} / {record.total}</td>
+                                      <td className="p-3 text-center text-sakura-600 font-extrabold">{record.percentage}%</td>
+                                      <td className="p-3 text-center font-mono">{formatTime(record.timeTaken)}</td>
+                                      <td className="p-3 text-center uppercase text-[10px] font-bold text-slate-400">{record.mode}</td>
+                                    </tr>
+                                  );
+                                })}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
                     </div>
-                    <div className="max-h-64 overflow-y-auto rounded-2xl border border-slate-200 bg-white/30 pr-1">
-                      <div className="divide-y divide-slate-100">
-                        {leaderboard.map((record) => (
-                          <div key={record.id} className="p-3 flex items-center justify-between gap-4 hover:bg-slate-50/40 text-xs transition-colors">
-                            <div>
-                              <span className="font-bold text-slate-800 block">{record.name}</span>
-                              <span className="text-[10px] text-slate-400 block font-semibold">{record.date} • {record.mode.toUpperCase()}</span>
-                            </div>
-                            <div className="text-right">
-                              <span className="font-extrabold text-sakura-500 block">{record.score}/{record.total} ({record.percentage}%)</span>
-                              <span className="text-[10px] text-slate-400 font-mono block">সময়: {formatTime(record.timeTaken)}</span>
-                            </div>
+
+                    {/* Recent Attempts logs */}
+                    {leaderboard.length > 0 && (
+                      <div className="space-y-3 pt-2">
+                        <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                          <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                            📜 সাম্প্রতিক প্রচেষ্টাসমূহ (Recent Attempts)
+                          </h4>
+                          <button
+                            onClick={() => {
+                              if (window.confirm("তুমি কি সব ইতিহাস ও লিডারবোর্ড তথ্য মুছে ফেলতে চাও?")) {
+                                setLeaderboard([]);
+                              }
+                            }}
+                            className="text-[10px] font-bold text-rose-500 hover:text-rose-600 hover:underline"
+                          >
+                            ইতিহাস মুছুন (Clear All)
+                          </button>
+                        </div>
+                        <div className="max-h-64 overflow-y-auto rounded-2xl border border-slate-200 bg-white/30 pr-1">
+                          <div className="divide-y divide-slate-100">
+                            {leaderboard.map((record) => (
+                              <div key={record.id} className="p-3 flex items-center justify-between gap-4 hover:bg-slate-50/40 text-xs transition-colors">
+                                <div>
+                                  <span className="font-bold text-slate-800 block">{record.name}</span>
+                                  <span className="text-[10px] text-slate-400 block font-semibold">{record.date} • {record.mode.toUpperCase()}</span>
+                                </div>
+                                <div className="text-right">
+                                  <span className="font-extrabold text-sakura-500 block">{record.score}/{record.total} ({record.percentage}%)</span>
+                                  <span className="text-[10px] text-slate-400 font-mono block">সময়: {formatTime(record.timeTaken)}</span>
+                                </div>
+                              </div>
+                            ))}
                           </div>
-                        ))}
+                        </div>
                       </div>
-                    </div>
+                    )}
                   </div>
                 )}
+
+                {/* VIEW B: Personal Analytics Dashboard */}
+                {subTab === 'personal' && (
+                  <div className="space-y-6">
+                    
+                    {/* Search Input */}
+                    <div className="p-4 bg-white/40 border border-sakura-100 rounded-2xl space-y-2">
+                      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
+                        🔎 নাম দিয়ে তোমার অগ্রগতি অনুসন্ধান করো (Search Your Progress)
+                      </label>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          placeholder="যেমন: মাইশা রহমান"
+                          value={searchProgressName}
+                          onChange={(e) => setSearchProgressName(e.target.value)}
+                          className="flex-1 p-2.5 rounded-xl border border-slate-200 bg-white/95 text-slate-700 text-sm font-semibold focus:border-sakura-300 focus:ring-2 focus:ring-sakura-200 outline-none"
+                        />
+                        {studentName && (
+                          <button
+                            onClick={() => setSearchProgressName(studentName)}
+                            className="px-3.5 py-2 text-xs font-bold bg-sakura-50 text-sakura-600 border border-sakura-200 rounded-xl hover:bg-sakura-100 transition-all"
+                          >
+                            My Name
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Render stats if found */}
+                    {(() => {
+                      const records = leaderboard.filter(r => r.name.trim().toLowerCase() === searchProgressName.trim().toLowerCase() && r.name.trim() !== '');
+                      
+                      if (!searchProgressName.trim()) {
+                        return (
+                          <p className="text-xs text-slate-400 text-center py-8">
+                            উপরের বক্সে তোমার নাম টাইপ করে ব্যক্তিগত ড্যাশবোর্ড চালু করো! 🐾
+                          </p>
+                        );
+                      }
+
+                      if (records.length === 0) {
+                        return (
+                          <div className="text-center py-8 bg-white/40 border border-slate-200 rounded-2xl space-y-2">
+                            <span className="text-2xl">😿</span>
+                            <p className="text-xs text-slate-500 font-semibold">
+                              "{searchProgressName}" নামে কোনো পরীক্ষার রেকর্ড খুঁজে পাওয়া যায়নি!
+                            </p>
+                            <p className="text-[10px] text-slate-400">
+                              অনুগ্রহ করে সঠিক নাম লিখুন বা পরীক্ষা সম্পন্ন করে রেকর্ড তৈরি করুন।
+                            </p>
+                          </div>
+                        );
+                      }
+
+                      // Math calculations
+                      const totalTests = records.length;
+                      const scores = records.map(r => r.score);
+                      const totals = records.map(r => r.total);
+                      const percentages = records.map(r => r.percentage);
+                      const times = records.map(r => r.timeTaken);
+
+                      const highestPercent = Math.max(...percentages);
+                      const highestRecord = records.find(r => r.percentage === highestPercent);
+                      const avgPercent = Math.round(percentages.reduce((a, b) => a + b, 0) / totalTests);
+                      const totalTime = times.reduce((a, b) => a + b, 0);
+
+                      // Chapter Analytics
+                      const chapterStats = {};
+                      records.forEach(r => {
+                        if (r.chapters && Array.isArray(r.chapters)) {
+                          r.chapters.forEach(ch => {
+                            if (!chapterStats[ch]) {
+                              chapterStats[ch] = { sum: 0, count: 0 };
+                            }
+                            chapterStats[ch].sum += r.percentage;
+                            chapterStats[ch].count += 1;
+                          });
+                        }
+                      });
+
+                      const chapterList = Object.entries(chapterStats).map(([ch, stat]) => ({
+                        chapter: ch,
+                        accuracy: Math.round(stat.sum / stat.count)
+                      })).sort((a, b) => b.accuracy - a.accuracy);
+
+                      const strongestChapter = chapterList.length > 0 ? chapterList[0] : null;
+                      const weakestChapter = chapterList.length > 1 ? chapterList[chapterList.length - 1] : null;
+
+                      return (
+                        <div className="space-y-6 animate-scale-in">
+                          
+                          {/* Greetings & Quick Info */}
+                          <div className="p-4 bg-gradient-to-r from-sakura-50 to-lavender-50 border border-sakura-150 rounded-2xl text-center">
+                            <h4 className="font-display font-black text-slate-800 text-sm flex items-center justify-center gap-1">
+                              🐈 স্বাগতম, {searchProgressName}!
+                            </h4>
+                            <p className="text-[10px] text-slate-500 font-semibold mt-0.5">
+                              তোমার সম্পূর্ণ পরীক্ষার অগ্রগতি বিশ্লেষণ নিচে দেওয়া হলো।
+                            </p>
+                          </div>
+
+                          {/* Stats Grid */}
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                            <div className="p-3 bg-white border border-slate-100 rounded-2xl text-center shadow-sm">
+                              <span className="block text-xl font-black text-sakura-500 font-display">{totalTests}</span>
+                              <span className="text-[9px] text-slate-400 font-bold uppercase">মোট পরীক্ষা (Tests)</span>
+                            </div>
+                            <div className="p-3 bg-white border border-slate-100 rounded-2xl text-center shadow-sm">
+                              <span className="block text-xl font-black text-lavender-500 font-display">{avgPercent}%</span>
+                              <span className="text-[9px] text-slate-400 font-bold uppercase">গড় নম্বর (Avg Accuracy)</span>
+                            </div>
+                            <div className="p-3 bg-white border border-slate-100 rounded-2xl text-center shadow-sm">
+                              <span className="block text-xl font-black text-emerald-500 font-display">{highestPercent}%</span>
+                              <span className="text-[9px] text-slate-400 font-bold uppercase">সর্বোচ্চ স্কোর (Best)</span>
+                            </div>
+                            <div className="p-3 bg-white border border-slate-100 rounded-2xl text-center shadow-sm">
+                              <span className="block text-xl font-black text-roseGold-600 font-display">{formatTime(Math.round(totalTime / totalTests))}</span>
+                              <span className="text-[9px] text-slate-400 font-bold uppercase">গড় সময় (Avg Time)</span>
+                            </div>
+                          </div>
+
+                          {/* Chapter Strengths & Weaknesses */}
+                          {chapterList.length > 0 && (
+                            <div className="p-4 bg-white/60 border border-sakura-100 rounded-2xl space-y-3 shadow-inner">
+                              <span className="text-xs font-bold text-slate-600 block uppercase tracking-wider border-b border-slate-100 pb-1.5">
+                                📊 অধ্যায়ভিত্তিক দক্ষতা বিশ্লেষণ (Chapter Analytics)
+                              </span>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                                {strongestChapter && (
+                                  <div className="p-3 bg-emerald-50 border border-emerald-150 rounded-xl space-y-1">
+                                    <span className="font-extrabold text-emerald-700 block text-[10px] uppercase">
+                                      ⭐ সবচেয়ে সবল অধ্যায় (Strongest)
+                                    </span>
+                                    <span className="font-bold text-slate-700 block truncate">{strongestChapter.chapter.split(':').slice(1).join(':').trim() || strongestChapter.chapter}</span>
+                                    <span className="font-black text-emerald-600 text-sm">{strongestChapter.accuracy}% গড় নির্ভুলতা</span>
+                                  </div>
+                                )}
+                                {weakestChapter && (
+                                  <div className="p-3 bg-rose-50 border border-rose-150 rounded-xl space-y-1">
+                                    <span className="font-extrabold text-rose-700 block text-[10px] uppercase">
+                                      ⚠️ আরও অনুশীলনের প্রয়োজন (Weakest)
+                                    </span>
+                                    <span className="font-bold text-slate-700 block truncate">{weakestChapter.chapter.split(':').slice(1).join(':').trim() || weakestChapter.chapter}</span>
+                                    <span className="font-black text-rose-600 text-sm">{weakestChapter.accuracy}% গড় নির্ভুলতা</span>
+                                  </div>
+                                )}
+                              </div>
+
+                              {/* Tested Chapters Accuracy list */}
+                              <div className="pt-2 space-y-2">
+                                <span className="text-[10px] font-bold text-slate-400 block uppercase">অংশগ্রহণকৃত অধ্যায়সমূহের রেকর্ড (Tested Chapters)</span>
+                                <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
+                                  {chapterList.map(item => (
+                                    <div key={item.chapter} className="flex items-center justify-between text-xs p-1.5 bg-white/70 rounded-lg border border-slate-100">
+                                      <span className="font-semibold text-slate-650 truncate max-w-[200px] sm:max-w-xs">{item.chapter}</span>
+                                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                                        item.accuracy >= 80 ? 'bg-emerald-100 text-emerald-700' : item.accuracy >= 50 ? 'bg-lavender-100 text-lavender-700' : 'bg-rose-100 text-rose-700'
+                                      }`}>
+                                        {item.accuracy}% Accuracy
+                                      </span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Personal Attempt Timeline */}
+                          <div className="space-y-3">
+                            <span className="text-xs font-bold text-slate-600 block uppercase tracking-wider">
+                              📈 তোমার প্রচেষ্টা ইতিহাস (Attempt History)
+                            </span>
+                            <div className="max-h-56 overflow-y-auto rounded-2xl border border-slate-200 bg-white/40">
+                              <div className="divide-y divide-slate-100">
+                                {records.map((r, idx) => (
+                                  <div key={r.id} className="p-3 flex items-center justify-between text-xs hover:bg-sakura-50/10 transition-colors">
+                                    <div>
+                                      <span className="font-bold text-slate-800">প্রচেষ্টা #{totalTests - idx}</span>
+                                      <span className="block text-[10px] text-slate-400 font-semibold mt-0.5">{r.date} • {r.mode.toUpperCase()}</span>
+                                    </div>
+                                    <div className="text-right">
+                                      <span className="font-black text-sakura-500 block">{r.score} / {r.total} ({r.percentage}%)</span>
+                                      <span className="block text-[10px] text-slate-400 font-mono">সময়: {formatTime(r.timeTaken)}</span>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+
+                        </div>
+                      );
+                    })()}
+                  </div>
+                )}
+
               </div>
             )}
             
