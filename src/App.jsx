@@ -44,6 +44,24 @@ export default function App() {
   // Review Filter
   const [reviewFilter, setReviewFilter] = useState('all'); // 'all' | 'wrong' | 'unanswered' | 'marked'
 
+  // Leaderboard & Student Name states
+  const [leaderboard, setLeaderboard] = useState(() => {
+    const saved = localStorage.getItem('hsc_bio_leaderboard');
+    return saved ? JSON.parse(saved) : [];
+  });
+  const [studentName, setStudentName] = useState(() => {
+    return localStorage.getItem('hsc_bio_studentName') || '';
+  });
+  const [activeLandingTab, setActiveLandingTab] = useState('start'); // 'start' | 'leaderboard'
+
+  useEffect(() => {
+    localStorage.setItem('hsc_bio_leaderboard', JSON.stringify(leaderboard));
+  }, [leaderboard]);
+
+  useEffect(() => {
+    localStorage.setItem('hsc_bio_studentName', studentName);
+  }, [studentName]);
+
   // Exam Configuration
   const [config, setConfig] = useState({
     mode: 'practice', // 'full' | 'practice' | 'random' | 'chapter' | 'custom'
@@ -238,11 +256,37 @@ export default function App() {
     if (timerRef.current) clearInterval(timerRef.current);
     
     // Calculate final time taken
+    let finalTimeTaken = 0;
     if (startTime) {
       const elapsed = Math.round((Date.now() - startTime) / 1000);
       const totalAllocated = config.timerMinutes * 60;
-      setTimeTaken(config.hasTimer ? Math.min(elapsed, totalAllocated) : elapsed);
+      finalTimeTaken = config.hasTimer ? Math.min(elapsed, totalAllocated) : elapsed;
+      setTimeTaken(finalTimeTaken);
     }
+
+    // Calculate final score
+    let finalCorrect = 0;
+    questionsList.forEach(q => {
+      if (answers[q.id] === q.correctAnswer) {
+        finalCorrect++;
+      }
+    });
+
+    const finalPercent = questionsList.length > 0 ? Math.round((finalCorrect / questionsList.length) * 100) : 0;
+
+    // Save to leaderboard database
+    const newRecord = {
+      id: Date.now(),
+      name: studentName.trim() || 'অজ্ঞাত শিক্ষার্থী 🐾',
+      score: finalCorrect,
+      total: questionsList.length,
+      percentage: finalPercent,
+      timeTaken: finalTimeTaken,
+      mode: config.mode,
+      date: new Date().toLocaleDateString('bn-BD') + ' ' + new Date().toLocaleTimeString('bn-BD', { hour: '2-digit', minute: '2-digit', hour12: true })
+    };
+
+    setLeaderboard(prev => [newRecord, ...prev]);
 
     setExamSubmitted(true);
     setShowSubmitModal(false);
@@ -446,7 +490,6 @@ export default function App() {
                   <div className="flex gap-2">
                     <button
                       onClick={() => {
-                        // Triggers the localstorage load by setting examActive
                         setExamActive(true);
                       }}
                       className="px-4 py-1.5 text-xs font-bold text-white bg-sakura-500 hover:bg-sakura-600 rounded-xl transition-all shadow-sm"
@@ -467,12 +510,51 @@ export default function App() {
               )}
             </div>
 
+            {/* Tab Selector */}
+            <div className="flex gap-2 p-1 bg-white/60 backdrop-blur-md rounded-2xl border border-sakura-100 max-w-sm mx-auto shadow-sakura-sm">
+              <button
+                onClick={() => setActiveLandingTab('start')}
+                className={`flex-1 py-2.5 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 ${
+                  activeLandingTab === 'start'
+                    ? 'bg-sakura-500 text-white shadow-sm font-extrabold'
+                    : 'text-slate-500 hover:text-sakura-500'
+                }`}
+              >
+                📝 পরীক্ষা শুরু করো
+              </button>
+              <button
+                onClick={() => setActiveLandingTab('leaderboard')}
+                className={`flex-1 py-2.5 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 ${
+                  activeLandingTab === 'leaderboard'
+                    ? 'bg-sakura-500 text-white shadow-sm font-extrabold'
+                    : 'text-slate-500 hover:text-sakura-500'
+                }`}
+              >
+                🏆 মেধা তালিকা ও রেকর্ড
+              </button>
+            </div>
+
             {/* Config Box */}
-            <div className="glass-panel-heavy p-6 sm:p-8 rounded-3xl shadow-sakura">
-              <h3 className="font-display text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
-                <HelpCircle className="w-5 h-5 text-sakura-500" />
-                Configure Your Examination
-              </h3>
+            {activeLandingTab === 'start' && (
+              <div className="glass-panel-heavy p-6 sm:p-8 rounded-3xl shadow-sakura space-y-6">
+                <h3 className="font-display text-lg font-bold text-slate-800 flex items-center gap-2">
+                  <HelpCircle className="w-5 h-5 text-sakura-500" />
+                  Configure Your Examination
+                </h3>
+
+                {/* Student Name Input */}
+                <div className="p-4 bg-white/40 border border-sakura-100 rounded-2xl space-y-2.5">
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                    🐱 তোমার নাম লেখো (Enter Student Name)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="যেমন: মাইশা রহমান 🌸"
+                    value={studentName}
+                    onChange={(e) => setStudentName(e.target.value)}
+                    className="w-full p-2.5 rounded-xl border border-slate-200 bg-white/90 text-slate-700 text-sm font-semibold focus:border-sakura-350 focus:ring-2 focus:ring-sakura-200 outline-none transition-all shadow-inner"
+                  />
+                </div>
 
               <div className="space-y-6">
                 
@@ -659,6 +741,113 @@ export default function App() {
                 Start Examination
               </button>
             </div>
+            )}
+
+            {/* Leaderboard & History view */}
+            {activeLandingTab === 'leaderboard' && (
+              <div className="glass-panel-heavy p-6 sm:p-8 rounded-3xl shadow-sakura space-y-6 animate-scale-in">
+                <div className="text-center space-y-2">
+                  <span className="text-4xl animate-bounce">🏆</span>
+                  <h3 className="font-display text-xl font-black text-slate-800">
+                    মেধা তালিকা ও পরীক্ষার রেকর্ড
+                  </h3>
+                  <p className="text-xs text-slate-400 font-bold uppercase">
+                    HSC 2026 Biology 2nd Paper (Zoology)
+                  </p>
+                </div>
+
+                {/* Leaderboard Table (Top 10 sorted by percentage desc, then timeTaken asc) */}
+                <div className="space-y-3">
+                  <h4 className="text-sm font-bold text-slate-700 flex items-center gap-1.5 border-b border-slate-100 pb-2">
+                    👑 টপ ১০ লিডারবোর্ড (Top 10 Leaderboard)
+                  </h4>
+                  {leaderboard.length === 0 ? (
+                    <p className="text-xs text-slate-400 text-center py-4">এখনো কোনো পরীক্ষার রেকর্ড নেই। পরীক্ষা দিয়ে প্রথম স্থান অর্জন করো! 🌸</p>
+                  ) : (
+                    <div className="overflow-x-auto rounded-2xl border border-sakura-100 bg-white/40">
+                      <table className="w-full text-left text-xs border-collapse">
+                        <thead>
+                          <tr className="bg-sakura-50 border-b border-sakura-100 font-extrabold text-slate-700">
+                            <th className="p-3 text-center">স্থান (Rank)</th>
+                            <th className="p-3">শিক্ষার্থী (Name)</th>
+                            <th className="p-3 text-center">স্কোর (Score)</th>
+                            <th className="p-3 text-center">শতকরা (Percentage)</th>
+                            <th className="p-3 text-center">সময় (Time)</th>
+                            <th className="p-3 text-center">মোড (Mode)</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-sakura-50">
+                          {[...leaderboard]
+                            .sort((a, b) => {
+                              if (b.percentage !== a.percentage) {
+                                return b.percentage - a.percentage;
+                              }
+                              return a.timeTaken - b.timeTaken;
+                            })
+                            .slice(0, 10)
+                            .map((record, index) => {
+                              let medal = (index + 1).toString();
+                              if (index === 0) medal = '🥇';
+                              if (index === 1) medal = '🥈';
+                              if (index === 2) medal = '🥉';
+                              return (
+                                <tr key={record.id} className="hover:bg-sakura-50/20 font-medium text-slate-600 transition-colors">
+                                  <td className="p-3 text-center font-bold text-base">{medal}</td>
+                                  <td className="p-3 font-semibold text-slate-800 flex items-center gap-1.5">
+                                    <span>🐱</span>
+                                    <span>{record.name}</span>
+                                  </td>
+                                  <td className="p-3 text-center font-bold">{record.score} / {record.total}</td>
+                                  <td className="p-3 text-center text-sakura-600 font-extrabold">{record.percentage}%</td>
+                                  <td className="p-3 text-center font-mono">{formatTime(record.timeTaken)}</td>
+                                  <td className="p-3 text-center uppercase text-[10px] font-bold text-slate-400">{record.mode}</td>
+                                </tr>
+                              );
+                            })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+
+                {/* History Table (Recent attempts in chronological order) */}
+                {leaderboard.length > 0 && (
+                  <div className="space-y-3 pt-4">
+                    <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                      <h4 className="text-sm font-bold text-slate-700 flex items-center gap-1.5">
+                        📜 সাম্প্রতিক প্রচেষ্টাসমূহ (Recent Attempts)
+                      </h4>
+                      <button
+                        onClick={() => {
+                          if (window.confirm("তুমি কি সব ইতিহাস ও লিডারবোর্ড তথ্য মুছে ফেলতে চাও?")) {
+                            setLeaderboard([]);
+                          }
+                        }}
+                        className="text-[10px] font-bold text-rose-500 hover:text-rose-600 hover:underline"
+                      >
+                        ইতিহাস মুছুন (Clear All)
+                      </button>
+                    </div>
+                    <div className="max-h-64 overflow-y-auto rounded-2xl border border-slate-200 bg-white/30 pr-1">
+                      <div className="divide-y divide-slate-100">
+                        {leaderboard.map((record) => (
+                          <div key={record.id} className="p-3 flex items-center justify-between gap-4 hover:bg-slate-50/40 text-xs transition-colors">
+                            <div>
+                              <span className="font-bold text-slate-800 block">{record.name}</span>
+                              <span className="text-[10px] text-slate-400 block font-semibold">{record.date} • {record.mode.toUpperCase()}</span>
+                            </div>
+                            <div className="text-right">
+                              <span className="font-extrabold text-sakura-500 block">{record.score}/{record.total} ({record.percentage}%)</span>
+                              <span className="text-[10px] text-slate-400 font-mono block">সময়: {formatTime(record.timeTaken)}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
             
             {/* Guidelines Footer */}
             <div className="text-center text-xs text-slate-400 space-y-1 py-4">
